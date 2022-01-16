@@ -1,0 +1,222 @@
+ Why? Functionality
+Does it work?
+Speed
+Is it fast enough?
+Fault-tolerance
+Does it keep working?
+Where?
+Completeness Separate normal and
+ worst case
+Shed load
+End-to-end
+Safety first
+End-to-end
+Interface Do one thing well:
+ Don’t generalize
+ Get it right
+ Don’t hide power
+ Use procedure arguments
+ Leave it to the client
+Keep basic interfaces stable
+Keep a place to stand
+Make it fast
+Split resources
+Static analysis
+Dynamic translation
+End-to-end
+Log updates
+Make actions atomic
+Implementation Plan to throw one away
+Keep secrets
+Use a good idea again
+Divide and conquer
+Cache answers
+Use hints
+Use brute force
+Compute in background
+Batch processing
+Make actions atomic
+Use hints
+
+The body of the paper is in three sections, according to the why headings:
+functionality (section 2), speed (section 3), and fault-tolerance (section
+4).
+
+2. Functionality
+
+The most important hints, and the vaguest, have to do with obtaining the
+right functionality from a system, that is, with getting it to do the
+things you want it to do. Most of these hints depend on the notion of an
+interface that separates an implementation of some abstraction from the
+clients who use the abstraction. The interface between two programs
+consists of the set of assumptions that each programmer needs to make about
+the other program in order to demonstrate the correctness of his program
+(paraphrased from [5]). Defining interfaces is the most important part of
+system design. Usually it is also the most difficult, since the interface
+design must satisfy three conflicting requirements: an interface should be
+simple, it should be complete, and it should admit a sufficiently small and
+fast implementation.  Alas, all too often the assumptions embodied in an
+interface turn out to be misconceptions instead. Parnas’ classic paper [38]
+and a more recent one on device interfaces [5] offer excellent practical
+advice on this subject.
+
+The main reason interfaces are difficult to design is that each interface
+is a small programming language: it defines a set of objects and the
+operations that can be used to manipulate the objects.  Concrete syntax is
+not an issue, but every other aspect of programming language design is
+present. Hoare’s hints on language design [19] can thus be read as a
+supplement to this paper.
+
+2.1 Keep it simple
+
+    Perfection is reached not when there is no longer anything to add, but when
+    there is no longer anything to take away. (A. Saint-Exupery)
+
+    Those friends thou hast, and their adoption tried,
+    Grapple them unto thy soul with hoops of steel;
+    But do not dull thy palm with entertainment
+    Of each new-hatch’d unfledg’d comrade.
+
+• Do one thing at a time, and do it well. An interface should capture the
+minimum essentials of an abstraction. Don’t generalize; generalizations are
+generally wrong.
+
+We are faced with an insurmountable opportunity. (W. Kelley)
+
+When an interface undertakes to do too much its implementation will
+probably be large, slow and complicated. An interface is a contract to
+deliver a certain amount of service; clients of the interface depend on the
+contract, which is usually documented in the interface specification.  They
+also depend on incurring a reasonable cost (in time or other scarce
+resources) for using the interface; the definition of ‘reasonable’ is
+usually not documented anywhere. If there are six levels of abstraction,
+and each costs 50% more than is ‘reasonable’, the service delivered at the
+top will miss by more than a factor of 10.
+
+    KISS: Keep It Simple, Stupid. (Anonymous)
+
+    If in doubt, leave if out. (Anonymous)
+
+    Exterminate features. (C. Thacker)
+
+On the other hand,
+
+    Everything should be made as simple as possible, but no simpler. (A. Einstein)
+
+Thus, service must have a fairly predictable cost, and the interface must
+not promise more than the implementer knows how to deliver. Especially, it
+should not promise features needed by only a few clients, unless the
+implementer knows how to provide them without penalizing others. A better
+implementer, or one who comes along ten years later when the problem is
+better understood, might be able to deliver, but unless the one you have
+can do so, it is wise to reduce your aspirations.
+
+For example, PL/1 got into serious trouble by attempting to provide
+consistent meanings for a large number of generic operations across a wide
+variety of data types. Early implementations tended to handle all the cases
+inefficiently, but even with the optimizing compilers of 15 years later, it
+is hard for the programmer to tell what will be fast and what will be slow
+[31]. A language like Pascal or C is much easier to use, because every
+construct has a roughly constant cost that is independent of context or
+arguments, and in fact most constructs have about the same cost.
+
+Of course, these observations apply most strongly to interfaces that
+clients use heavily, such as virtual memory, files, display handling, or
+arithmetic. It is all right to sacrifice some performance for functionality
+in a seldom used interface such as password checking, interpreting user
+commands, or printing 72 point characters. (What this really means is that
+though the cost must still be predictable, it can be many times the minimum
+achievable cost.) And such cautious rules don’t apply to research whose
+object is learning how to make better implementations. But since research
+may well fail, others mustn’t depend on its success.
+
+    Algol 60 was not only an improvement on its predecessors, but also on
+    nearly all its successors. (C. Hoare)
+
+Examples of offering too much are legion. The Alto operating system [29]
+has an ordinary read/write-n-bytes interface to files, and was extended for
+Interlisp-D [7] with an ordinary paging system that stores each virtual
+page on a dedicated disk page. Both have small implementations (about 900
+lines of code for files, 500 for paging) and are fast (a page fault takes
+one disk access and has a constant computing cost that is a small fraction
+of the disk access time, and the client can fairly easily run the disk at
+full speed). The Pilot system [42] which succeeded the Alto OS follows
+Multics and several other systems in allowing virtual pages to be mapped to
+file pages, thus subsuming file input/output within the virtual memory
+system. The implementation is much larger (about 11,000 lines of code) and
+slower (it often incurs two disk accesses to handle a page fault and cannot
+run the disk at full speed). The extra functionality is bought at a high
+price.
+
+This is not to say that a good implementation of this interface is
+impossible, merely that it is hard. This system was designed and coded by
+several highly competent and experienced people.  Part of the problem is
+avoiding circularity: the file system would like to use the virtual memory,
+but virtual memory depends on files. Quite general ways are known to solve
+this problem [22], but they are tricky and easily lead to greater cost and
+complexity in the normal case.
+
+    And, in this upshot, purposes mistook
+    Fall’n on th’ inventors’ heads. (V ii 387)
+
+Another example illustrates how easily generality can lead to unexpected
+complexity. The Tenex system [2] has the following innocent-looking
+combination of features:
+
+    It reports a reference to an unassigned virtual page by a trap to
+    the user program.
+
+    A system call is viewed as a machine instruction for an extended
+    machine, and any reference it makes to an unassigned virtual page is
+    thus similarly reported to the user program.
+
+    Large arguments to system calls, including strings, are passed by reference.
+
+    There is a system call CONNECT to obtain access to another directory;
+    one of its arguments is a string containing the password for the
+    directory. If the password is wrong, the call fails after a three
+    second delay, to prevent guessing passwords at high speed.
+
+    CONNECT is implemented by a loop of the form
+	for i := 0 to Length(directoryPassword) do
+	    if directoryPassword[i] ≠ passwordArgument[i] then
+		Wait three seconds; return BadPassword
+	    end if
+	end loop;
+    connect to directory; return Success
+
+The following trick finds a password of length n in 64n tries on the
+average, rather than 128n /2 (Tenex uses 7 bit characters in strings).
+Arrange the passwordArgument so that its first character is the last
+character of a page and the next page is unassigned, and try each possible
+character as the first. If CONNECT reports BadPassword, the guess was
+wrong; if the system reports a reference to an unassigned page, it was
+correct. Now arrange the passwordArgument so that its second character is
+the last character of the page, and proceed in the obvious way.
+
+This obscure and amusing bug went unnoticed by the designers because the
+interface provided by a Tenex system call is quite complex: it includes the
+possibility of a reported reference to an unassigned page. Or looked at
+another way, the interface provided by an ordinary memory reference
+instruction in system code is quite complex: it includes the possibility
+that an improper reference will be reported to the client without any
+chance for the system code to get control first.
+
+    An engineer is a man who can do for a dime
+    what any fool can do for a dollar. (Anonymous)
+
+At times, however, it’s worth a lot of work to make a fast implementation
+of a clean and powerful interface. If the interface is used widely enough,
+the effort put into designing and tuning the implementation can pay off
+many times over. But do this only for an interface whose importance is
+already known from existing uses. And be sure that you know how to make it
+fast.
+
+For example, the BitBlt or RasterOp interface for manipulating raster
+images [21, 37] was devised by Dan Ingalls after several years of
+experimenting with the Alto’s high-resolution interactive display. Its
+implementation costs about as much microcode as the entire emulator for the
+Alto’s standard instruction set and required a lot of skill and experience
+to construct. But the performance is nearly as good as the special-purpose
+character-to-raster operations that preceded it, and its simplicity and
+generality have made it much easier to build display applications.
