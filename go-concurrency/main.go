@@ -90,7 +90,76 @@ func channel_intro_2() {
 	}
 }
 
+func select_statement() {
+	c1 := make(chan string)
+	c2 := make(chan string)
+
+	go func() {
+		for {
+			c1 <- "Every 500ms"
+			time.Sleep(500 * time.Millisecond)
+		}
+	}()
+
+	go func() {
+		for {
+			c2 <- "Every 2s"
+			time.Sleep(2 * time.Second)
+		}
+	}()
+
+	for {
+		select {
+		case msg1 := <-c1:
+			fmt.Println(msg1)
+		case msg2 := <-c2:
+			fmt.Println(msg2)
+		}
+	}
+}
+
+// Worker Pool
+// Queue of work to be done and 
+// multiple concurrent workers pulling work
+// off the queue
+func fib(n int) int {
+	if n <= 1 {
+        return n
+    }
+    
+    dp := make([]int, n + 1)
+	dp[0] = 0
+	dp[1] = 1
+
+	for i := 2; i <= n; i++ {
+		dp[i] = dp[i - 1] + dp[i - 2]
+	}
+
+	return dp[n]
+}
+
+func worker_job(jobs <-chan int, results chan<- int) {
+	for n := range jobs {
+		results <- fib(n)
+	}
+}
+
 // Main itself is a routine
 func main() {
-	channel_intro_1()
+	jobs := make(chan int, 80)
+	results := make(chan int, 80)
+
+	for i := 0; i < 4; i++ {
+		go worker_job(jobs, results)
+	}
+
+	for i := 0; i < 80; i++ {
+		jobs <- i
+	}
+
+	close(jobs)
+
+	for i := 0; i < 80; i++ {
+		fmt.Println(<-results)
+	}
 }
