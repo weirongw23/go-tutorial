@@ -146,20 +146,20 @@ func worker_job(jobs <-chan int, results chan<- int) {
 
 // Main itself is a routine
 func main() {
-	jobs := make(chan int, 80)
-	results := make(chan int, 80)
+	jobs := make(chan int, 1000)
+	results := make(chan int, 1000)
 
 	for i := 0; i < 4; i++ {
 		go worker_job(jobs, results)
 	}
 
-	for i := 0; i < 80; i++ {
+	for i := 0; i < 1000; i++ {
 		jobs <- i
 	}
 
 	close(jobs)
 
-	for i := 0; i < 80; i++ {
+	for i := 0; i < 1000; i++ {
 		fmt.Println(<-results)
 	}
 }
